@@ -66,7 +66,7 @@ function buildHTML(currentPath, absolutePath, items){
       <li><a class="link back" href="/">/</a></li>
       ${currentPath !== '/' ? '<li><a class="link back" href="../">..</a></li>' : '<li><a class="link back" href="./">.</a></li>'}
       ${items.map(dirent => dirent.isFile() ? 
-        ++fileCount && `<li><a class="link file" href="./${dirent.name}">${dirent.name}</a><a class="btn" href="./${dirent.name}?force=txt">txt</a></li>`:
+        ++fileCount && `<li><a class="btn" href="./${dirent.name}?force=txt">txt</a><a class="link file" href="./${dirent.name}">${dirent.name}</a></li>`:
         ++folderCount && `<li><a class="link folder" href="./${dirent.name}/">${dirent.name}</a></li>`
         ).join('\n')}
     </ul>
@@ -113,7 +113,7 @@ function getStyle(){
     }
     li:hover .link{
       background: #fff;
-      border-color: #dedede;
+      border-color: #113285;
       font-weight: 700;
     }
     li .link:before{
@@ -123,21 +123,24 @@ function getStyle(){
     }
     li .btn{
       position: absolute;
-      right: 1px;
+      left: 1px;
       top: 1px;
-      width: 50px;
+      width: 30px;
       color: #fff;
+      font-size: 12px;
       font-weight: 700;
       text-align: center;
       line-height: 20px;
       background: #113285;
-      border-radius: 3px;
       transition: all .2s ease;
       visibility: hidden;
       opacity: 0;
     }
     li .btn:hover{
       background: #1B813E;
+    }
+    li:hover .btn:hover + .link{
+      border-color: #1B813E;
     }
     li:hover .btn{
       visibility: visible;
