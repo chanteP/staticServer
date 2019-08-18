@@ -3,7 +3,7 @@ const program = require('commander');
 program
   .option('-s, --source <source>', 'root folder, default to .')
   .option('-p, --port <port>', 'port, default to random')
-  .option('-b, --background', 'do not open browser');
+  .option('-b, --background', 'do not open in browser');
 program.parse(process.argv);
 
 const source = program.source || './';
@@ -28,78 +28,142 @@ app.use(async (ctx, next) => {
   if(!fs.existsSync(folder)){
     return ctx.body = `${folder} not found`;
   }
-  if(fs.statSync(folder).isFile()){
+  if(fs.statSync(folder).isDirectory()){
+    // output folder template
+    return ctx.body = buildHTML(ctx.path, folder, fs.readdirSync(folder, {withFileTypes: true}));
+  }
+  // output text
+  if(ctx.query.force === 'txt'){
+    ctx.set('content-type', 'text/plain');
+    return ctx.body = fs.createReadStream(folder);
+  }
+  // static
+  else{
     return await next();
   }
-  // output folder template
-  let rs = fs.readdirSync(folder, {withFileTypes: true});
-  ctx.body = `
-    <style>${styles}</style>
-    <h3>${ctx.path}</h3>
-    <span>${rs.length} objects in folder ${folder}</span>
-    <ul>
-      ${ctx.path !== '/' ? '<li><a class="folder" href="../">..</a></li>' : ''}
-      ${rs.map(dirent => dirent.isFile() ? 
-        `<li><a class="file" href="./${dirent.name}">${dirent.name}</a></li>`:
-        `<li><a class="folder" href="./${dirent.name}">${dirent.name}/</a></li>`
-        ).join('\n')}
-    </ul>`;
 });
-app.use(require('koa-static')(sourseRoot));
+app.use(require('koa-static')(sourseRoot, {hidden: true}));
 
 app.listen(port, () => {
   require('dns').lookup(require('os').hostname(), function (err, add, fam) {
     const root = `http://${add}:${port}/`;
     console.log(`static server (${chalk.yellow(sourseRoot)}) ' @ ${chalk.cyan(root)}`);
-    console.log(chalk.gray(`options: -s <source> -p <port>`));
+    console.log(chalk.gray(`options:`));
+    console.log(chalk.gray(`\t -s <source>`));
+    console.log(chalk.gray(`\t -p <port>`));
+    console.log(chalk.gray(`\t -b do not open in browser`));
     !program.background && exec(`open ${root}`);
   });
 });
 
+function buildHTML(currentPath, absolutePath, items){
+  let folderCount = 0;
+  let fileCount = 0;
+  return `
+    <style>${styles}</style>
+    <h3>${currentPath}</h3>
+    <ul>
+      <li><a class="link back" href="/">/</a></li>
+      ${currentPath !== '/' ? '<li><a class="link back" href="../">..</a></li>' : '<li><a class="link back" href="./">.</a></li>'}
+      ${items.map(dirent => dirent.isFile() ? 
+        ++fileCount && `<li><a class="link file" href="./${dirent.name}">${dirent.name}</a><a class="btn" href="./${dirent.name}?force=txt">txt</a></li>`:
+        ++folderCount && `<li><a class="link folder" href="./${dirent.name}/">${dirent.name}</a></li>`
+        ).join('\n')}
+    </ul>
+    <span class="subtitle">${folderCount} folders & ${fileCount} files in ${absolutePath}</span>
+  `;
+}
+
 function getStyle(){
   return `
-  body{
-    background: #f0f0f0;
-    font-size: 13px;
-  }
-  h3{
-    margin-left: 30px;
-    margin-bottom: 2px;
-  }
-  span{
-    display: inline-block;
-    margin-left: 40px;
-    color: #999;
-    font-size: 0.6em;
-  }
-  li{
-    list-style: none;
-  }
-  li a{
-    display: block;
-    padding: 0 12px;
-    line-height: 20px;
-    text-decoration: none;
-    transition: all .22s ease;
-    border-radius: 3px;
-    border: 1px solid transparent;
-  }
-  li a:hover{
-    background: #fff;
-    border-color: #dedede;
-  }
-  li a:before{
-    display: inline-block;
-    margin-right: 10px;
-  }
-  .folder:before{
-    content: '+';
-  }
-  .file{
-    color: #333;
-  }
-  .file:before{
-    content: '-';
-  }
+    body{
+      background: #f0f0f0;
+      font-size: 13px;
+    }
+    a{
+      text-decoration: none;
+    }
+    h3{
+      margin-left: 30px;
+      margin-bottom: 2px;
+    }
+    .subtitle{
+      position: absolute;
+      top: 32px;
+      display: inline-block;
+      margin-left: 40px;
+      color: #999;
+      font-size: 0.6em;
+    }
+    ul{
+      margin-top: 25px;
+    }
+    li{
+      position: relative;
+      list-style: none;
+    }
+    li .link{
+      display: block;
+      padding: 0 12px;
+      line-height: 20px;
+      transition: all .22s ease;
+      border-radius: 3px;
+      border: 1px solid transparent;
+      outline: none;
+    }
+    li:hover .link{
+      background: #fff;
+      border-color: #dedede;
+      font-weight: 700;
+    }
+    li .link:before{
+      display: inline-block;
+      width: 20px;
+      margin-right: 10px;
+    }
+    li .btn{
+      position: absolute;
+      right: 1px;
+      top: 1px;
+      width: 50px;
+      color: #fff;
+      font-weight: 700;
+      text-align: center;
+      line-height: 20px;
+      background: #113285;
+      border-radius: 3px;
+      transition: all .2s ease;
+      visibility: hidden;
+      opacity: 0;
+    }
+    li .btn:hover{
+      background: #1B813E;
+    }
+    li:hover .btn{
+      visibility: visible;
+      opacity: 1;
+    }
+    .back:before{
+      content: ' ';
+    }
+    .back,
+    .folder{
+      font-weight: 700;
+    }
+    .folder{
+      color: #0B346E;
+    }
+    .folder:before{
+      content: '+';
+    }
+    .folder:after{
+      content: '/';
+    }
+    .file{
+      color: #333;
+    }
+    .file:before{
+      content: '-';
+    }
   `;
 }
