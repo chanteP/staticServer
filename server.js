@@ -23,14 +23,14 @@ const sourseRoot = path.resolve(process.cwd(), source);
 const styles = getStyle();
 
 app.use(async (ctx, next) => {
-  let folder = sourseRoot + ctx.path;
-  // output file
+  let currentPath = decodeURIComponent(ctx.path);
+  let folder = sourseRoot + currentPath;
   if(!fs.existsSync(folder)){
     return ctx.body = `${folder} not found`;
   }
   if(fs.statSync(folder).isDirectory()){
     // output folder template
-    return ctx.body = buildHTML(ctx.path, folder, fs.readdirSync(folder, {withFileTypes: true}));
+    return ctx.body = buildHTML(currentPath, folder, fs.readdirSync(folder, {withFileTypes: true}));
   }
   // output text
   if(ctx.query.force === 'txt'){
@@ -44,39 +44,50 @@ app.use(async (ctx, next) => {
 });
 app.use(require('koa-static')(sourseRoot, {hidden: true}));
 
-app.listen(port, () => {
-  require('dns').lookup(require('os').hostname(), function (err, add, fam) {
-    const root = `http://${add}:${port}/`;
+app.listen(port, async () => {
+    const root = `http://${await getIP()}:${port}/`;
     console.log(`static server (${chalk.yellow(sourseRoot)}) ' @ ${chalk.cyan(root)}`);
     console.log(chalk.gray(`options:`));
     console.log(chalk.gray(`\t -s <source>`));
     console.log(chalk.gray(`\t -p <port>`));
     console.log(chalk.gray(`\t -b do not open in browser`));
     !program.background && exec(`open ${root}`);
-  });
 });
 
+async function getIP(){
+  return new Promise((res, rej) => {
+    require('dns').lookup(require('os').hostname(), function (err, add, fam) {
+      err ? rej(err) : res(add);
+    })
+  });
+}
+
+// build html template
 function buildHTML(currentPath, absolutePath, items){
   let folderCount = 0;
   let fileCount = 0;
+  let stack = [];
   return `
     <style>${styles}</style>
-    <h3>${currentPath}</h3>
+    <h3>
+      <a href="/">$root</a>
+      ${currentPath.split('/').map(part => `<a href="${stack.push(part) && stack.join('/')}/">${part}</a>`).join(' / ')}
+    </h3>
     <ul>
-      <li><a class="link back" href="/">/</a></li>
       ${currentPath !== '/' ? '<li><a class="link back" href="../">..</a></li>' : '<li><a class="link back" href="./">.</a></li>'}
       ${items.map(dirent => dirent.isFile() ? 
-        ++fileCount && `<li><a class="btn" href="./${dirent.name}?force=txt">txt</a><a class="link file" href="./${dirent.name}">${dirent.name}</a></li>`:
+        ++fileCount && `<li><a class="btn" href="./${dirent.name}?force=txt">view</a><a class="link file" href="./${dirent.name}">${dirent.name}</a></li>`:
         ++folderCount && `<li><a class="link folder" href="./${dirent.name}/">${dirent.name}</a></li>`
         ).join('\n')}
     </ul>
-    <span class="subtitle">${folderCount} folders & ${fileCount} files in ${absolutePath}</span>
+    <span class="subtitle">${folderCount} folder & ${fileCount} file in ${absolutePath}</span>
   `;
 }
 
 function getStyle(){
   return `
     body{
+      margin: 0;
       background: #f0f0f0;
       font-size: 13px;
     }
@@ -84,12 +95,17 @@ function getStyle(){
       text-decoration: none;
     }
     h3{
-      margin-left: 30px;
-      margin-bottom: 2px;
+      margin: 0;
+      padding: 8px 30px;
+      background: #0B346E;
+      color: #fff;
+    }
+    h3 a{
+      color: #fff;
     }
     .subtitle{
       position: absolute;
-      top: 32px;
+      top: 44px;
       display: inline-block;
       margin-left: 40px;
       color: #999;
@@ -106,14 +122,15 @@ function getStyle(){
       display: block;
       padding: 0 12px;
       line-height: 20px;
-      transition: all .22s ease;
-      border-radius: 3px;
+      transition: all .1s ease;
+      border-radius: 0;
       border: 1px solid transparent;
       outline: none;
     }
     li:hover .link{
       background: #fff;
       border-color: #113285;
+      border-radius: 3px;
       font-weight: 700;
     }
     li .link:before{
@@ -132,7 +149,7 @@ function getStyle(){
       text-align: center;
       line-height: 20px;
       background: #113285;
-      transition: all .2s ease;
+      transition: all .05s ease;
       visibility: hidden;
       opacity: 0;
     }
@@ -155,6 +172,7 @@ function getStyle(){
     }
     .folder{
       color: #0B346E;
+      background: #0b346e14;
     }
     .folder:before{
       content: '+';
