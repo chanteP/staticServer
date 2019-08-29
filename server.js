@@ -1,14 +1,16 @@
 #!/usr/bin/env node
 const program = require('commander');
 program
-  .option('-s, --source <source>', 'root folder, default to .')
-  .option('-p, --port <port>', 'port, default to random')
-  .option('-b, --background', 'do not open in browser');
+  .option('-s, --source <source>', 'root, default to ./')
+  .option('-p, --port <port>', 'port, default to use random port', Math.round(8000 + Math.random() * 1000))
+  .option('-b, --background', 'do not open in browser')
+  .option('-t, --time <expire>', 'expire time, default to 15min. set 0 to keep alive', 15);
 program.parse(process.argv);
 
-const source = program.source || './';
-const port = program.port || Math.round(8000 + Math.random() * 1000);
- 
+const source = program.source || program.args[0] || './';
+const port = program.port;
+const time = program.time * 60 * 1000;
+
 const koa = require('koa');
 const app = new koa;
 
@@ -44,16 +46,19 @@ app.use(async (ctx, next) => {
 });
 app.use(require('koa-static')(sourseRoot, {hidden: true}));
 
-app.listen(port, async () => {
-    const root = `http://${await getIP()}:${port}/`;
-    console.log(`static server (${chalk.yellow(sourseRoot)}) ' @ ${chalk.cyan(root)}`);
-    console.log(chalk.gray(`options:`));
-    console.log(chalk.gray(`\t -s <source>`));
-    console.log(chalk.gray(`\t -p <port>`));
-    console.log(chalk.gray(`\t -b do not open in browser`));
-    !program.background && exec(`open ${root}`);
+let server = app.listen(port, async () => {
+  const root = `http://${await getIP()}:${port}/`;
+  console.log(`server start@ ${chalk.cyan(root)}`, time ? chalk.green(`(${program.time} mins)`) : chalk.red(`(keep alive)`));
+  console.log(`local path: ${chalk.yellow(sourseRoot)}`);
+  program.outputHelp((txt) => chalk.gray(txt));
+  !program.background && exec(`open ${root}`);
 });
 
+time && setTimeout(() => {
+  server.close();
+}, time);
+
+// func ------------------------------------------------------------------------------
 async function getIP(){
   return new Promise((res, rej) => {
     require('dns').lookup(require('os').hostname(), function (err, add, fam) {
