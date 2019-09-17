@@ -1,6 +1,6 @@
 {
   "name": "np-static-server",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "static server anywhere",
   "main": "server.js",
   "scripts": {
@@ -10,7 +10,7 @@
     "static": "./server.js"
   },
   "keywords": [],
-  "author": "chante",
+  "author": "chantep",
   "license": "ISC",
   "dependencies": {
     "chalk": "^2.4.2",

@@ -28,6 +28,7 @@ app.use(async (ctx, next) => {
   let currentPath = decodeURIComponent(ctx.path);
   let folder = sourseRoot + currentPath;
   if(!fs.existsSync(folder)){
+    ctx.status = 404;
     return ctx.body = `${folder} not found`;
   }
   if(fs.statSync(folder).isDirectory()){
