@@ -4,12 +4,13 @@ program
   .option('-s, --source <source>', 'root, default to ./')
   .option('-p, --port <port>', 'port, default to use random port', Math.round(8000 + Math.random() * 1000))
   .option('-b, --background', 'do not open in browser')
-  .option('-t, --time <expire>', 'expire time, default to 15min. set 0 to keep alive', 15);
+  .option('-t, --time <expire>', 'expire time, default to 15min. set 0 to keep alive', 15)
+  .option('-a, --alive', 'keep alive');
 program.parse(process.argv);
 
 const source = program.source || program.args[0] || './';
 const port = program.port;
-const time = program.time * 60 * 1000;
+const time = program.alive ? 0 : program.time * 60 * 1000;
 
 const koa = require('koa');
 const app = new koa;
