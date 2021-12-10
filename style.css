@@ -2,6 +2,7 @@ body {
     margin: 0;
     background: #f0f0f0;
     font-size: 13px;
+    font-family: '"Helvetica Neue", Helvetica, "Hiragino Sans GB", "Microsoft YaHei", "\5FAE软雅黑", Arial, sans-serif';
 
     --view-color: #113285;
     --download-color: #13c2c2;
@@ -29,6 +30,7 @@ h3 a {
 }
 ul {
     margin-top: 25px;
+    margin-bottom: 120px;
 }
 li {
     position: relative;
@@ -43,7 +45,7 @@ li .link {
     transition: all 0.1s ease;
     outline: none;
 }
-li .mime{
+li .mime {
     display: inline-block;
     padding-left: 1em;
     color: #aaa;
@@ -66,6 +68,7 @@ li:hover .link {
     box-sizing: border-box;
 }
 li:hover .background {
+    border: 1px solid var(--view-color);
     border-image: linear-gradient(90deg, var(--view-color), var(--download-color)) 10;
 }
 li .link:before {
@@ -109,7 +112,7 @@ li .btn.view:hover ~ .background {
     /* background: linear-gradient(90deg, var(--view-color), var(--download-color)); */
 }
 li .btn.download {
-    width: 30px;
+    width: 80px;
     right: 1px;
     background: var(--download-color);
     color: #fff;
@@ -152,4 +155,20 @@ li .btn.qrcode:hover ~ .background {
 }
 .file:before {
     content: '-';
+}
+
+.page-qrcode {
+    position: fixed;
+    bottom: 5px;
+    right: 5px;
+}
+.page-qrcode img {
+    width: 100px;
+}
+
+@media (max-width: 430px) {
+    .page-qrcode {
+        position: static;
+        display: none;
+    }
 }

@@ -8,6 +8,7 @@ const { exec } = require('child_process');
 
 const chalk = require('chalk');
 const mime = require('mime');
+const qrcode = require('qrcode');
 
 const koa = require('koa');
 const app = new koa();
@@ -40,7 +41,7 @@ app.use(async (ctx, next) => {
     }
     if (fs.statSync(folder).isDirectory()) {
         // output folder template
-        return (ctx.body = buildHTML(currentPath, folder, fs.readdirSync(folder, { withFileTypes: true })));
+        return (ctx.body = await buildHTML(currentPath, folder, fs.readdirSync(folder, { withFileTypes: true })));
     }
     // output text
     if (ctx.query.force === 'txt') {
@@ -93,12 +94,44 @@ function getLocalIP() {
     return arr.address;
 }
 
+async function buildQrCode(string) {
+    return new Promise((res, rej) => {
+        qrcode.toDataURL(
+            string,
+            {
+                errorCorrectionLevel: 'H',
+                type: 'image/jpeg',
+                quality: 0.3,
+                margin: 1,
+                color: {
+                    dark: '#333',
+                    light: '#fff',
+                },
+            },
+            function (err, url) {
+                if (err) rej(err);
+                res(url);
+            },
+        );
+    });
+}
+
 // template -----------------------------------------------------------------------------------------------------------------------
-function buildHTML(currentPath, absolutePath, items) {
+async function buildHTML(currentPath, absolutePath, items) {
     let folderCount = 0;
     let fileCount = 0;
     let stack = [];
     return `
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta name="format-detection" content="telephone=no">
+        <meta name="referrer" content="no-referrer" />
+        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no, viewport-fit=cover">
+        <meta http-equiv="X-UA-Compatible" content="ie=edge">
+        <title>np-static</title>
+    </head>
+    <body>
     <style>${styles}</style>
     <h3>
       <a href="/">$root</a>
@@ -119,7 +152,7 @@ function buildHTML(currentPath, absolutePath, items) {
                   ? ++fileCount &&
                     `<li>
                 <a class="btn view" title="view in text" href="./${dirent.name}?force=txt">view</a>
-                <a class="btn download" title="download" href="./${dirent.name}?force=download">⬇</a>
+                <a class="btn download" title="download" href="./${dirent.name}?force=download">download</a>
                 <div class="background"></div>
                 <a class="link file" href="./${dirent.name}">${dirent.name}<span class="mime">${
                         mime.getType(absolutePath + dirent.name) || ''
@@ -129,6 +162,9 @@ function buildHTML(currentPath, absolutePath, items) {
           )
           .join('\n')}
     </ul>
+    <div class="page-qrcode"><img src="${await buildQrCode(`${host}${currentPath}`)}" /></div>
     <span class="subtitle">${folderCount} folder(s) & ${fileCount} file(s) in ${absolutePath}</span>
-  `;
+    </body>
+    </html>
+    `;
 }
