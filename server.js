@@ -116,7 +116,7 @@ async function buildQrCode(string) {
     });
 }
 
-// template -----------------------------------------------------------------------------------------------------------------------
+// template 懒得拆文件了，将就吧-----------------------------------------------------------------------------------------------------------------------
 async function buildHTML(currentPath, absolutePath, items) {
     let folderCount = 0;
     let fileCount = 0;
@@ -140,7 +140,7 @@ async function buildHTML(currentPath, absolutePath, items) {
           .map((part) => `<a href="${stack.push(part) && stack.join('/')}/">${part}</a>`)
           .join(' / ')}
     </h3>
-    <ul>
+    <ul id="$list">
       ${
           currentPath !== '/'
               ? '<li><a class="link back" href="../">..</a></li>'
@@ -151,7 +151,11 @@ async function buildHTML(currentPath, absolutePath, items) {
               dirent.isFile()
                   ? ++fileCount &&
                     `<li>
-                <a class="btn view" title="view in text" href="./${dirent.name}?force=txt">view</a>
+                <a class="btn view" title="view in text" href="./${
+                    dirent.name
+                }?force=txt" data-action="preview" data-type="${
+                        mime.getType(absolutePath + dirent.name) || ''
+                    }">view</a>
                 <a class="btn download" title="download" href="./${dirent.name}?force=download">download</a>
                 <div class="background"></div>
                 <a class="link file" href="./${dirent.name}">${dirent.name}<span class="mime">${
@@ -162,9 +166,48 @@ async function buildHTML(currentPath, absolutePath, items) {
           )
           .join('\n')}
     </ul>
+    <iframe id="$preview" style="display:none;" ></iframe>
     <div class="page-qrcode"><img src="${await buildQrCode(`${host}${currentPath}`)}" /></div>
     <span class="subtitle">${folderCount} folder(s) & ${fileCount} file(s) in ${absolutePath}</span>
+    <script>
+        ${preview.toString()}
+        $list.onmouseover = preview;
+    </script>
     </body>
     </html>
     `;
+}
+
+function preview(e) {
+    const target = e.target;
+    if (target.dataset.action !== 'preview') {
+        $preview.style.cssText = style =
+            'border:1px solid #666;padding:6px;border-radius:4px;display:none;position:fixed;right:5px;top:5px;width:375px;height:667px;background:#fff;z-index:10;';
+        $preview.removeAttribute('src');
+        return;
+    }
+    const mime = target.dataset.type;
+    const url = target.href;
+
+    const supportType = ['image/', 'text/', 'application/pdf', 'application/javascript'];
+
+    if (!supportType.some((type) => mime.startsWith(type))) {
+        return;
+    }
+
+    $preview.style.display = '';
+    $preview.src = url;
+    $preview.onload = () => {
+        const src = $preview.src;
+        if (mime.startsWith('image/')) {
+            const image = $preview.contentWindow.document.images[0];
+            // image.onload = function () {
+                if ($preview.src !== src) {
+                    return;
+                }
+                $preview.style.height = `${375 / image.width * image.height}px`;
+                image.style.cssText = 'display:block;width:100vw;height:100vh;';
+            // };
+        }
+    };
 }
