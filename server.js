@@ -89,9 +89,13 @@ async function getIP() {
 }
 
 function getLocalIP() {
-    const networkInterfaces = os.networkInterfaces();
-    const arr = networkInterfaces.en0.find((link) => link.family === 'IPv4');
-    return arr.address;
+    try{
+        const networkInterfaces = os.networkInterfaces();
+        const arr = networkInterfaces.en0.find((link) => link.family === 'IPv4');
+        return arr.address;
+    }catch{
+        return 'localhost';
+    }
 }
 
 async function buildQrCode(string) {
