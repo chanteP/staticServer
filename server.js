@@ -89,11 +89,11 @@ async function getIP() {
 }
 
 function getLocalIP() {
-    try{
+    try {
         const networkInterfaces = os.networkInterfaces();
         const arr = networkInterfaces.en0.find((link) => link.family === 'IPv4');
         return arr.address;
-    }catch{
+    } catch {
         return 'localhost';
     }
 }
@@ -193,24 +193,33 @@ function preview(e) {
     const mime = target.dataset.type;
     const url = target.href;
 
-    const supportType = ['image/', 'text/', 'application/pdf', 'application/javascript'];
-
-    if (!supportType.some((type) => mime.startsWith(type))) {
+    const supportType = {
+        'image/': null,
+        'text/html': src => src.split('?')[0],
+        'text/': null,
+        'application/pdf': null,
+        'application/json': null,
+        'application/javascript': null,
+    };
+    const handler = Object.keys(supportType).find((type) => mime.startsWith(type));
+    if (!handler) {
         return;
     }
 
+    console.log(handler)
+
     $preview.style.display = '';
-    $preview.src = url;
+    $preview.src = handler && supportType[handler] && supportType[handler](url) || url;
     $preview.onload = () => {
         const src = $preview.src;
         if (mime.startsWith('image/')) {
             const image = $preview.contentWindow.document.images[0];
             // image.onload = function () {
-                if ($preview.src !== src) {
-                    return;
-                }
-                $preview.style.height = `${375 / image.width * image.height}px`;
-                image.style.cssText = 'display:block;width:100vw;height:100vh;';
+            if ($preview.src !== src) {
+                return;
+            }
+            $preview.style.height = `${(375 / image.width) * image.height}px`;
+            image.style.cssText = 'display:block;width:100vw;height:100vh;';
             // };
         }
     };
