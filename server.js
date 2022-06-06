@@ -45,7 +45,12 @@ app.use(async (ctx, next) => {
     }
     // output text
     if (ctx.query.force === 'txt') {
-        ctx.set('content-type', 'text/plain');
+        if(ctx.query.mime.startsWith('video/')){
+            ctx.set('content-type', 'text/html');
+            ctx.body = `<video controls src="${ctx.origin + ctx.path}"></video>`;
+            return;
+        }
+        ctx.set('content-type', 'text/plain;charset=utf-8');
         return (ctx.body = fs.createReadStream(folder));
     }
     // download
@@ -158,7 +163,7 @@ async function buildHTML(currentPath, absolutePath, items) {
                     `<li>
                 <a class="btn view" title="view in text" href="./${
                     dirent.name
-                }?force=txt" data-action="preview" data-type="${
+                }?force=txt&mime=${mime.getType(absolutePath + dirent.name)}" data-action="preview" data-type="${
                         mime.getType(absolutePath + dirent.name) || ''
                     }">view</a>
                 <a class="btn download" title="download" href="./${dirent.name}?force=download">download</a>
@@ -198,6 +203,7 @@ function preview(e) {
         'image/': null,
         'text/html': src => src.split('?')[0],
         'text/': null,
+        'video/': null,
         'application/pdf': null,
         'application/json': null,
         'application/javascript': null,
