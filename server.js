@@ -91,7 +91,8 @@ async function getIP() {
 function getLocalIP() {
     try {
         const networkInterfaces = os.networkInterfaces();
-        const arr = networkInterfaces.en0.find((link) => link.family === 'IPv4');
+        const ipHost = networkInterfaces.WLAN || networkInterfaces.en0;
+        const arr = ipHost.find((link) => link.family === 'IPv4' || +link.family === 4);
         return arr.address;
     } catch {
         return 'localhost';
@@ -171,7 +172,7 @@ async function buildHTML(currentPath, absolutePath, items) {
           .join('\n')}
     </ul>
     <iframe id="$preview" style="display:none;" ></iframe>
-    <div class="page-qrcode"><img src="${await buildQrCode(`${host}${currentPath}`)}" /></div>
+    <div class="page-qrcode" title="${host}${currentPath}"><img src="${await buildQrCode(`${host}${currentPath}`)}" /></div>
     <span class="subtitle">${folderCount} folder(s) & ${fileCount} file(s) in ${absolutePath}</span>
     <script>
         ${preview.toString()}
