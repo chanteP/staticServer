@@ -30,11 +30,13 @@ const host = `http://${getLocalIP()}:${port}/`;
 
 const sourseRoot = path.resolve(process.cwd(), source);
 
+const getFilePath = (ctx) => sourseRoot + decodeURIComponent(ctx.path);
+
 const styles = fs.readFileSync(`${__dirname}/style.css`);
 
 app.use(async (ctx, next) => {
     let currentPath = decodeURIComponent(ctx.path);
-    let folder = sourseRoot + currentPath;
+    let folder = getFilePath(ctx);
     if (!fs.existsSync(folder)) {
         ctx.status = 404;
         return (ctx.body = `${folder} not found`);
@@ -43,26 +45,38 @@ app.use(async (ctx, next) => {
         // output folder template
         return (ctx.body = await buildHTML(currentPath, folder, fs.readdirSync(folder, { withFileTypes: true })));
     }
-    // output text
-    if (ctx.query.force === 'txt') {
-        if(ctx.query.mime.startsWith('video/')){
-            ctx.set('content-type', 'text/html');
-            ctx.body = `<video controls src="${ctx.origin + ctx.path}"></video>`;
-            return;
-        }
-        ctx.set('content-type', 'text/plain;charset=utf-8');
-        return (ctx.body = fs.createReadStream(folder));
-    }
-    // download
-    if (ctx.query.force === 'download') {
-        ctx.set('content-type', 'application/octet-stream');
-        return (ctx.body = fs.createReadStream(folder));
-    }
-    // static
-    else {
+    return await next();
+});
+
+app.use(async (ctx, next) => {
+    let folder = getFilePath(ctx);
+    
+    if (ctx.query.force !== 'view') {
         return await next();
     }
+    // output preview content
+    // video wrapper
+    if (ctx.query.mime.startsWith('video/')) {
+        ctx.set('content-type', 'text/html');
+        ctx.body = `<video style="width:100%;" controls src="${ctx.origin + ctx.path}"></video>`;
+        return;
+    }
+    ctx.set('content-type', 'text/plain;charset=utf-8');
+    return (ctx.body = fs.createReadStream(folder));
 });
+
+app.use(async (ctx, next) => {
+    let folder = getFilePath(ctx);
+    
+    // download
+    if (ctx.query.force !== 'download') {
+        return await next();
+    }
+    ctx.set('content-type', 'application/octet-stream');
+    return (ctx.body = fs.createReadStream(folder));
+});
+
+app.use(require('koa-range'));
 app.use(require('koa-static')(sourseRoot, { hidden: true }));
 
 let server = app.listen(port, async () => {
@@ -161,11 +175,9 @@ async function buildHTML(currentPath, absolutePath, items) {
               dirent.isFile()
                   ? ++fileCount &&
                     `<li>
-                <a class="btn view" title="view in text" href="./${
-                    dirent.name
-                }?force=txt&mime=${mime.getType(absolutePath + dirent.name)}" data-action="preview" data-type="${
-                        mime.getType(absolutePath + dirent.name) || ''
-                    }">view</a>
+                <a class="btn view" title="view in text" href="./${dirent.name}?force=view&mime=${mime.getType(
+                        absolutePath + dirent.name,
+                    )}" data-action="preview" data-type="${mime.getType(absolutePath + dirent.name) || ''}">view</a>
                 <a class="btn download" title="download" href="./${dirent.name}?force=download">download</a>
                 <div class="background"></div>
                 <a class="link file" href="./${dirent.name}">${dirent.name}<span class="mime">${
@@ -177,7 +189,9 @@ async function buildHTML(currentPath, absolutePath, items) {
           .join('\n')}
     </ul>
     <iframe id="$preview" style="display:none;" ></iframe>
-    <div class="page-qrcode" title="${host}${currentPath}"><img src="${await buildQrCode(`${host}${currentPath}`)}" /></div>
+    <div class="page-qrcode" title="${host}${currentPath}"><img src="${await buildQrCode(
+        `${host}${currentPath}`,
+    )}" /></div>
     <span class="subtitle">${folderCount} folder(s) & ${fileCount} file(s) in ${absolutePath}</span>
     <script>
         ${preview.toString()}
@@ -201,7 +215,7 @@ function preview(e) {
 
     const supportType = {
         'image/': null,
-        'text/html': src => src.split('?')[0],
+        'text/html': (src) => src.split('?')[0],
         'text/': null,
         'video/': null,
         'application/pdf': null,
@@ -213,10 +227,10 @@ function preview(e) {
         return;
     }
 
-    console.log(handler)
+    console.log(handler);
 
     $preview.style.display = '';
-    $preview.src = handler && supportType[handler] && supportType[handler](url) || url;
+    $preview.src = (handler && supportType[handler] && supportType[handler](url)) || url;
     $preview.onload = () => {
         const src = $preview.src;
         if (mime.startsWith('image/')) {
