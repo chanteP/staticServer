@@ -19,7 +19,8 @@ program
     .option('-p, --port <port>', 'port, default to use random port', Math.round(8000 + Math.random() * 1000))
     .option('-b, --background', 'do not open in browser')
     .option('-t, --time <expire>', 'expire time, default to 15min. set 0 to keep alive', 15)
-    .option('-a, --alive', 'keep alive');
+    .option('-a, --alive', 'keep alive')
+    .option('--spa <rootFile>', 'spa');
 program.parse(process.argv);
 
 const source = program.source || program.args[0] || './';
@@ -34,6 +35,21 @@ const getFilePath = (ctx) => sourseRoot + decodeURIComponent(ctx.path);
 
 const styles = fs.readFileSync(`${__dirname}/style.css`);
 
+const spaContent = program.spa ? fs.readFileSync(path.resolve(process.cwd(), program.spa)) : null;
+
+// log
+app.use(async (ctx, next) => {
+    try {
+        const now = new Date();
+        const log = `[${now.toLocaleDateString()} ${now.toLocaleTimeString()}] ${ctx.path}`;
+        console.log(chalk.gray(log));
+        await next();
+    } catch (e) {
+        console.error(chalk.red(e));
+    }
+});
+
+// 目录访问
 app.use(async (ctx, next) => {
     let currentPath = decodeURIComponent(ctx.path);
     let folder = getFilePath(ctx);
@@ -42,18 +58,26 @@ app.use(async (ctx, next) => {
         return (ctx.body = `${folder} not found`);
     }
     if (fs.statSync(folder).isDirectory()) {
+        // spa先丢到这里..访问的应该都是目录
+        if (program.spa) {
+            ctx.set('content-type', 'text/html');
+            ctx.body = spaContent;
+            return;
+        }
         // output folder template
         return (ctx.body = await buildHTML(currentPath, folder, fs.readdirSync(folder, { withFileTypes: true })));
     }
     return await next();
 });
 
+// 预览
 app.use(async (ctx, next) => {
     let folder = getFilePath(ctx);
-    
+
     if (ctx.query.force !== 'view') {
         return await next();
     }
+    console.log(chalk.cyan(`view ${ctx.path}`));
     // output preview content
     // video wrapper
     if (ctx.query.mime.startsWith('video/')) {
@@ -65,13 +89,15 @@ app.use(async (ctx, next) => {
     return (ctx.body = fs.createReadStream(folder));
 });
 
+// 下载
 app.use(async (ctx, next) => {
     let folder = getFilePath(ctx);
-    
+
     // download
     if (ctx.query.force !== 'download') {
         return await next();
     }
+    console.log(chalk.cyan(`download ${ctx.path}`));
     ctx.set('content-type', 'application/octet-stream');
     return (ctx.body = fs.createReadStream(folder));
 });
@@ -226,8 +252,6 @@ function preview(e) {
     if (!handler) {
         return;
     }
-
-    console.log(handler);
 
     $preview.style.display = '';
     $preview.src = (handler && supportType[handler] && supportType[handler](url)) || url;
