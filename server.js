@@ -41,7 +41,7 @@ const spaContent = program.spa ? fs.readFileSync(path.resolve(process.cwd(), pro
 app.use(async (ctx, next) => {
     try {
         const now = new Date();
-        const log = `[${now.toLocaleDateString()} ${now.toLocaleTimeString()}] ${ctx.path}`;
+        const log = `[${now.toLocaleDateString()} ${now.toLocaleTimeString()}][${ctx.request.socket.remoteAddress}] ${ctx.path}`;
         console.log(chalk.gray(log));
         await next();
     } catch (e) {
