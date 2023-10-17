@@ -1,6 +1,6 @@
 {
   "name": "np-static-server",
-  "version": "1.1.9",
+  "version": "1.1.10",
   "description": "static server anywhere",
   "main": "server.js",
   "scripts": {

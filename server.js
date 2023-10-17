@@ -41,12 +41,23 @@ const spaContent = program.spa ? fs.readFileSync(path.resolve(process.cwd(), pro
 app.use(async (ctx, next) => {
     try {
         const now = new Date();
-        const log = `[${now.toLocaleDateString()} ${now.toLocaleTimeString()}][${ctx.request.socket.remoteAddress}] ${ctx.path}`;
+        const log = `[${now.toLocaleDateString()} ${now.toLocaleTimeString()}][${ctx.request.socket.remoteAddress}] ${
+            ctx.path
+        }`;
         console.log(chalk.gray(log));
         await next();
     } catch (e) {
         console.error(chalk.red(e));
     }
+});
+
+// delay
+app.use(async (ctx, next) => {
+    const delay = ctx.query.delay || 0;
+    await new Promise((res) => {
+        setTimeout(res, delay);
+    });
+    await next();
 });
 
 // 目录访问
