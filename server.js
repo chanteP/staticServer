@@ -114,7 +114,16 @@ app.use(async (ctx, next) => {
 });
 
 app.use(require('koa-range'));
-app.use(require('koa-static')(sourseRoot, { hidden: true }));
+
+app.use(
+    require('koa-static')(sourseRoot, {
+        hidden: true,
+        setHeaders: (res) => {
+            res.setHeader('Cross-Origin-Opener-Policy', 'same-origin');
+            res.setHeader('Cross-Origin-Embedder-Policy', 'require-corp');
+        },
+    }),
+);
 
 let server = app.listen(port, async () => {
     console.log(
