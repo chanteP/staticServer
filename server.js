@@ -29,9 +29,9 @@ const time = program.alive ? 0 : program.time * 60 * 1000;
 
 const host = `http://${getLocalIP()}:${port}/`;
 
-const sourseRoot = path.resolve(process.cwd(), source);
+const sourceRoot = path.resolve(process.cwd(), source);
 
-const getFilePath = (ctx) => sourseRoot + decodeURIComponent(ctx.path);
+const getFilePath = (ctx) => sourceRoot + decodeURIComponent(ctx.path);
 
 const styles = fs.readFileSync(`${__dirname}/style.css`);
 
@@ -116,7 +116,7 @@ app.use(async (ctx, next) => {
 app.use(require('koa-range'));
 
 app.use(
-    require('koa-static')(sourseRoot, {
+    require('koa-static')(sourceRoot, {
         hidden: true,
         setHeaders: (res) => {
             res.setHeader('Cross-Origin-Opener-Policy', 'same-origin');
@@ -130,7 +130,7 @@ let server = app.listen(port, async () => {
         `server start@ ${chalk.cyan(host)}`,
         time ? chalk.green(`(${program.time} mins)`) : chalk.red(`(keep alive)`),
     );
-    console.log(`local path: ${chalk.yellow(sourseRoot)}`);
+    console.log(`local path: ${chalk.yellow(sourceRoot)}`);
     program.outputHelp((txt) => chalk.gray(txt));
     !program.background && exec(`open ${host}`);
 });
